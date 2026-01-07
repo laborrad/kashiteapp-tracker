@@ -1,0 +1,98 @@
+name: Sync Issues from Main Repo
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync Issue to Main Repository
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const comment = context.payload.comment;
+            const action = context.payload.action;
+            
+            // ループ防止: 既に同期タグがある場合はスキップ
+            if (issue && issue.body && issue.body.includes('[sync-src:main#')) {
+              console.log('Already synced from main repo, skipping');
+              return;
+            }
+            
+            const mainOwner = 'laborrad';
+            const mainRepo = 'kashiteapp';
+            
+            try {
+              if (action === 'opened') {
+                // 新規Issueの作成
+                const newIssue = await github.rest.issues.create({
+                  owner: mainOwner,
+                  repo: mainRepo,
+                  title: `[Tracker] ${issue.title}`,
+                  body: `${issue.body || ''}\n\n---\n📋 [トラッカーのIssue](${issue.html_url}) [sync-src:tracker#${issue.number}]`,
+                  labels: issue.labels.map(l => l.name)
+                });
+                console.log(`Created issue #${newIssue.data.number} in main repo`);
+                
+                // トラッカー側のIssueに本体リポのIssue番号を追記
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `✅ 本体リポジトリに同期しました: [kashiteapp#${newIssue.data.number}](${newIssue.data.html_url})`
+                });
+                
+              } else if (action === 'closed' || action === 'reopened') {
+                // 本体側の対応するIssueを探してステータス更新
+                const { data: mainIssues } = await github.rest.issues.listForRepo({
+                  owner: mainOwner,
+                  repo: mainRepo,
+                  state: 'all',
+                  per_page: 100
+                });
+                
+                const syncTag = `[sync-src:tracker#${issue.number}]`;
+                const mainIssue = mainIssues.find(mi => mi.body && mi.body.includes(syncTag));
+                
+                if (mainIssue) {
+                  await github.rest.issues.update({
+                    owner: mainOwner,
+                    repo: mainRepo,
+                    issue_number: mainIssue.number,
+                    state: issue.state
+                  });
+                  console.log(`Updated main issue #${mainIssue.number} state to ${issue.state}`);
+                }
+                
+              } else if (comment && action === 'created') {
+                // コメントの同期
+                const { data: mainIssues } = await github.rest.issues.listForRepo({
+                  owner: mainOwner,
+                  repo: mainRepo,
+                  state: 'all',
+                  per_page: 100
+                });
+                
+                const syncTag = `[sync-src:tracker#${issue.number}]`;
+                const mainIssue = mainIssues.find(mi => mi.body && mi.body.includes(syncTag));
+                
+                if (mainIssue) {
+                  await github.rest.issues.createComment({
+                    owner: mainOwner,
+                    repo: mainRepo,
+                    issue_number: mainIssue.number,
+                    body: `**${comment.user.login}** (tracker) commented:\n\n${comment.body}\n\n---\n[元のコメント](${comment.html_url})`
+                  });
+                  console.log(`Added comment to main issue #${mainIssue.number}`);
+                }
+              }
+            } catch (error) {
+              console.error('Error syncing to main repo:', error);
+              throw error;
+            }
