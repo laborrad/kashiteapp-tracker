@@ -13,7 +13,7 @@ jobs:
       - name: Sync Issue to Main Repository
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           script: |
             const issue = context.payload.issue;
             const comment = context.payload.comment;
