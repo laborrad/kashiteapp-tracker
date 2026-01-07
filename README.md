@@ -29,7 +29,7 @@
 - お使いの端末: iPhone 13
 ```
 
-👉 [不具合連絡の例を見る](../../issues?q=is%3Aissue+label%3Abug)
+👉 [不具合連絡の例を見る](../../issues?q=is%3Aissue+label%3Abug+state%3Aclosed)
 
 #### 💡 改善など
 こうなったらもっと使いやすい、こんな機能があったらいいな、と思ったらこちら
@@ -42,7 +42,7 @@
 - どんな時に: イベント検索で日付順に見たい時
 ```
 
-👉 [改善提案の例を見る](../../issues?q=is%3Aissue+label%3Aenhancement)
+👉 [改善提案の例を見る](../../issues?q=is%3Aissue+label%3Aenhancement+state%3Aclosed)
 
 #### ❓ その他連絡
 使い方の質問、感想、その他何でもお気軽にどうぞ
